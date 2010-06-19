@@ -29,7 +29,7 @@
 
 #define D(x...) pr_info(x)
 
-struct wake_lock proximity_wake_lock;
+struct wake_lock proximity_wake_lock_2;
 
 static struct capella_cm3602_data {
 	struct input_dev *input_dev;
@@ -64,7 +64,7 @@ static int capella_cm3602_report(struct capella_cm3602_data *data)
 	input_report_abs(data->input_dev, ABS_DISTANCE, val);
 	input_sync(data->input_dev);
 
-	wake_lock_timeout(&proximity_wake_lock, 2*HZ);
+	wake_lock_timeout(&proximity_wake_lock_2, 2*HZ);
 
 	return val;
 }
@@ -291,7 +291,7 @@ static int capella_cm3602_probe(struct platform_device *pdev)
 		goto err_unregister_input_device;
 	}
 
-	wake_lock_init(&proximity_wake_lock, WAKE_LOCK_SUSPEND, "proximity");
+	wake_lock_init(&proximity_wake_lock_2, WAKE_LOCK_SUSPEND, "proximity");
 
 	rc = capella_cm3602_setup(ip);
 	if (!rc)

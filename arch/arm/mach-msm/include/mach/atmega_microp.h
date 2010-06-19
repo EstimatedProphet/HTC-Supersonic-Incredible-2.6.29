@@ -49,6 +49,7 @@
 #define LED_JOGBALL					(1 << 1)
 #define LED_GPO						(1 << 2)
 #define LED_PWM						(1 << 3)
+#define LED_WIMAX					(1 << 4)
 
 #define SPI_GSENSOR					(1 << 0)
 #define SPI_LCM						(1 << 1)

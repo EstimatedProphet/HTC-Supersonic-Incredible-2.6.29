@@ -105,7 +105,7 @@ static struct microp_function_config microp_functions[] = {
 	{
 		.name = "light_sensor",
 		.category = MICROP_FUNCTION_LSENSOR,
-		.levels = { 3, 7, 11, 80, 199, 279, 479, 539, 541, 0x3FF },
+		.levels = { 3, 7, 12, 57, 114, 279, 366, 453, 540, 0x3FF },
 		.channel = 3,
 		.int_pin = 1 << 9,
 		.golden_adc = 0x118,
@@ -139,10 +139,10 @@ static struct microp_led_config led_config[] = {
 		.name = "green",
 		.type = LED_RGB,
 	},
-/*	{
+	{
 		.name = "wimax",
 		.type = LED_WIMAX,
-	},*/
+	},
 };
 
 static struct microp_led_platform_data microp_leds_data = {
@@ -983,7 +983,7 @@ static struct tpa6130_platform_data headset_amp_platform_data = {
 
 static struct i2c_board_info i2c_devices[] = {
 	{
-		I2C_BOARD_INFO(ATMEL_QT602240_NAME, 0x94 >> 1),
+		I2C_BOARD_INFO(ATMEL_QT602240_NAME, 0xcc >> 1), //0x94 >> 1),
 		.platform_data = &supersonic_atmel_ts_data,
 		.irq = MSM_GPIO_TO_INT(SUPERSONIC_GPIO_TP_INT_N)
 	},
@@ -1471,11 +1471,18 @@ static void __init supersonic_init(void)
 #endif
 	msm_device_i2c_init();
 
+	// TODO: r3,xa8 = r4,x20 devices[x].foo = bar?
+
 	platform_add_devices(devices, ARRAY_SIZE(devices));
 	if (!opt_usb_h2w_sw) {
 		msm_register_usb_phy_init_seq(supersonic_phy_init_seq);
 		msm_register_uart_usb_switch(supersonic_uart_usb_switch);
 		msm_add_usb_id_pin_gpio(SUPERSONIC_GPIO_USB_ID_PIN);
+
+//TODO msm_add_usb_id_pin_function()
+//TODO config_supersonic_usb_id_gpios()
+// TODO msm_enable_car_kit_detect()
+
 		msm_hsusb_set_product(supersonic_usb_products,
 			ARRAY_SIZE(supersonic_usb_products));
 		msm_add_usb_devices(msm_hsusb_8x50_phy_reset, NULL);
@@ -1494,8 +1501,10 @@ static void __init supersonic_init(void)
 		pr_err("failed to create board_properties\n");
 
 	msm_init_pmic_vibrator();
+// XXX: only one call to gpio table??
 	config_gpio_table(usb_phy_3v3_table, ARRAY_SIZE(usb_phy_3v3_table));
 	config_gpio_table(usb_ID_PIN_table, ARRAY_SIZE(usb_ID_PIN_table));
+
 	gpio_set_value(SUPERSONIC_USB_PHY_3V3_ENABLE, 1);
 
 }

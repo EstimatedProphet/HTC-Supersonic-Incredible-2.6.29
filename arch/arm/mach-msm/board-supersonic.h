@@ -154,6 +154,9 @@
 #define SUPERSONIC_CLK_SWITCH	102
 
 #define SUPERSONIC_LCD_RST	(113)
+#define SUPERSONIC_LCD_RST_XD (149)
+#define SUPERSONIC_LCD_RST_FOO_XD (151)
+
 unsigned supersonic_get_skuid(void);
 
 /* HDMI */

@@ -54,6 +54,26 @@ int qspi_send_16bit(unsigned char id, unsigned data)
 	return 0;
 }
 
+int qspi_send_9bit(unsigned char id, unsigned data)
+{
+	unsigned err;
+
+	/* bit-5: OUTPUT_FIFO_NOT_EMPTY */
+
+	while( readl(spi_base+SPI_OPERATIONAL) & (1<<5) )
+	{
+		if ((err=readl(spi_base+SPI_ERROR_FLAGS)))
+		{
+			printk("\rERROR:  SPI_ERROR_FLAGS=%d\r", err);
+			return -1;
+		}
+	}
+
+	writel( (id<<8 | data) << 23, spi_base+SPI_OUTPUT_FIFO );
+	udelay(1000);
+	return 0;
+}
+
 int qspi_send(unsigned char id, unsigned data)
 {
         unsigned err ;
