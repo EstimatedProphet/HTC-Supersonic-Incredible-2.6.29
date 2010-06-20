@@ -557,7 +557,7 @@ static int
 supersonic_mddi_init(struct msm_mddi_bridge_platform_data *bridge_data,
 		     struct msm_mddi_client_data *client_data)
 {
-	int i = 0;
+	int i;
 	unsigned reg, val, delay;
 
 	client_data->auto_hibernate(client_data, 0);
@@ -609,9 +609,9 @@ supersonic_mddi_uninit(struct msm_mddi_bridge_platform_data *bridge_data,
 	if (panel_type == 0) {
 		// Epson
 		for (i = 0; i < ARRAY_SIZE(epson_uninit_cmds); i++) {
-			reg = epson_init_cmds[i].reg;
-			val = epson_init_cmds[i].val;
-			delay = epson_init_cmds[i].delay;
+			reg = epson_uninit_cmds[i].reg;
+			val = epson_uninit_cmds[i].val;
+			delay = epson_uninit_cmds[i].delay;
 			if (qspi_send_9bit(reg, val)) {
 				printk(KERN_ERR "%s: spi_write fail (%02x, %02x)!\n", __func__, reg, val);
 			}
@@ -826,14 +826,13 @@ mddi_epson_power(struct msm_mddi_client_data *client_data, int on)
 
 static struct msm_mddi_platform_data mddi_pdata = {
 	.clk_rate = 384000000,
-	.power_client = mddi_novatec_power,
 	.fb_resource = resources_msm_fb,
 	.num_clients = 2,
 	.client_platform_data = {
 		{
 			.product_id = (0xb9f6 << 16 | 0x5582),
 			.name = "mddi_c_b9f6_5582",
-			.id = 0,
+			.id = 1,
 			.client_data = &novatec_client_data,
 			.clk_rate = 0,
 		},
@@ -850,13 +849,11 @@ static struct msm_mddi_platform_data mddi_pdata = {
 static struct platform_driver suc_backlight_driver = {
 	.probe = suc_backlight_probe,
 	.driver = {
-		.name = "nov_cabc",
 		.owner = THIS_MODULE,
 	},
 };
 
 static struct msm_mdp_platform_data mdp_pdata = {
-	.dma_channel = MDP_DMA_S,
 };
 
 int __init supersonic_init_panel(void)
@@ -875,6 +872,12 @@ int __init supersonic_init_panel(void)
 	vreg_lcd_2v8 = vreg_get(0, "synt");
 	if (IS_ERR(vreg_lcd_2v8))
 		return PTR_ERR(vreg_lcd_2v8);
+
+	if (panel_type == 0) {
+		mdp_pdata.dma_channel = MDP_DMA_S;
+	} else {
+		mdp_pdata.dma_channel = MDP_DMA_P;
+	}
 
 	msm_device_mdp.dev.platform_data = &mdp_pdata;
 	rc = platform_device_register(&msm_device_mdp);
