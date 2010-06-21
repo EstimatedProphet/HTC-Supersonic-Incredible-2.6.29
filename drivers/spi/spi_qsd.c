@@ -30,26 +30,27 @@
 #define SPI_OUTPUT_FIFO         (0x00000100)
 
 void __iomem *spi_base;
-struct clk *spi_clk ;
+struct clk *spi_clk;
 
 int qspi_send_16bit(unsigned char id, unsigned data)
 {
-        unsigned err ;
+	unsigned err;
 
-        /* bit-5: OUTPUT_FIFO_NOT_EMPTY */
+	clk_enable(spi_clk);
 
-        while( readl(spi_base+SPI_OPERATIONAL) & (1<<5) )
-        {
-                if( (err=readl(spi_base+SPI_ERROR_FLAGS)) )
-                {
-                        printk("\rERROR:  SPI_ERROR_FLAGS=%d\r", err);
-                        return -1;
-                }
-        }
+	/* bit-5: OUTPUT_FIFO_NOT_EMPTY */
 
-	writel( (id<<13 | data)<<16, spi_base+SPI_OUTPUT_FIFO );/*AUO*/
+	while (readl(spi_base + SPI_OPERATIONAL) & (1<<5)) {
+		if ((err=readl(spi_base + SPI_ERROR_FLAGS))) {
+			printk(KERN_ERR "%s: ERROR:  SPI_ERROR_FLAGS=%d\n", __func__, err);
+			return -1;
+		}
+	}
 
-        udelay(1000);
+	writel(((id << 13) | data) << 16, spi_base+SPI_OUTPUT_FIFO );/*AUO*/
+
+	udelay(1000);
+	clk_disable(spi_clk);
 
 	return 0;
 }
@@ -58,63 +59,85 @@ int qspi_send_9bit(unsigned char id, unsigned data)
 {
 	unsigned err;
 
+	clk_enable(spi_clk);
+
 	/* bit-5: OUTPUT_FIFO_NOT_EMPTY */
 
-	while( readl(spi_base+SPI_OPERATIONAL) & (1<<5) )
-	{
-		if ((err=readl(spi_base+SPI_ERROR_FLAGS)))
-		{
-			printk("\rERROR:  SPI_ERROR_FLAGS=%d\r", err);
+	while (readl(spi_base + SPI_OPERATIONAL) & (1<<5)) {
+		if ((err=readl(spi_base + SPI_ERROR_FLAGS))) {
+			printk(KERN_ERR "%s: ERROR:  SPI_ERROR_FLAGS=%d\n", __func__, err);
 			return -1;
 		}
 	}
 
-	writel( (id<<8 | data) << 23, spi_base+SPI_OUTPUT_FIFO );
+	writel(((id << 8) | data) << 23, spi_base + SPI_OUTPUT_FIFO);
 	udelay(1000);
+
+	clk_disable(spi_clk);
 	return 0;
 }
 
 int qspi_send(unsigned char id, unsigned data)
 {
-        unsigned err ;
+	unsigned err;
 
-        /* bit-5: OUTPUT_FIFO_NOT_EMPTY */
+	clk_enable(spi_clk);
 
-        while( readl(spi_base+SPI_OPERATIONAL) & (1<<5) )
-        {
-                if( (err=readl(spi_base+SPI_ERROR_FLAGS)) )
-                {
-                        printk("\rERROR:  SPI_ERROR_FLAGS=%d\r", err);
-                        return -1;
-                }
-        }
+	/* bit-5: OUTPUT_FIFO_NOT_EMPTY */
 
-        writel( (0x7000 | id<<9 | data)<<16, spi_base+SPI_OUTPUT_FIFO );
-        udelay(100);
+	while (readl(spi_base + SPI_OPERATIONAL) & (1<<5)) {
+		if ((err=readl(spi_base + SPI_ERROR_FLAGS))) {
+			printk(KERN_ERR "%s: ERROR:  SPI_ERROR_FLAGS=%d\n", __func__, err);
+			return -1;
+		}
+	}
+
+	writel((0x7000 | (id << 9) | data) << 16, spi_base + SPI_OUTPUT_FIFO);
+	udelay(100);
+
+	clk_disable(spi_clk);
 
 	return 0;
 }
 
 static int __init msm_spi_probe(struct platform_device *pdev)
 {
-	int rc ;
+	int rc, num_resources;
+	struct resource *res;
+	num_resources = pdev->num_resources;
 
-	spi_base=ioremap(0xA1200000, 4096);
-	if(!spi_base)
-		return -1;
+	if (num_resources < 1) {
+		printk(KERN_ERR "%s: Couldn't get msm_spi resources\n", __func__);
+		return -ENODEV;
+	}
 
-        spi_clk = clk_get(&pdev->dev, "spi_clk");
-        if (IS_ERR(spi_clk)) {
-                dev_err(&pdev->dev, "%s: unable to get spi_clk\n", __func__);
-                rc = PTR_ERR(spi_clk);
-                goto err_probe_clk_get;
-        }
-        rc = clk_enable(spi_clk);
-        if (rc) {
-                dev_err(&pdev->dev, "%s: unable to enable spi_clk\n",
-                        __func__);
-                goto err_probe_clk_enable;
-        }
+	res = pdev->resource;
+	for (num_resources--; num_resources >= 0; num_resources--) {
+		if (res[num_resources].flags == IORESOURCE_MEM) {
+			spi_base = ioremap(res[num_resources].start, 
+				res[num_resources].end - res[num_resources].start + 1);
+			break;
+		}
+	}
+
+	if(!spi_base) {
+		printk(KERN_ERR "%s: Unable to remap spi memory resource.\n", __func__);
+		return -ENOMEM;
+	}
+
+	spi_clk = clk_get(&pdev->dev, "spi_clk");
+	if (IS_ERR(spi_clk)) {
+		dev_err(&pdev->dev, "%s: unable to get spi_clk\n", __func__);
+		rc = PTR_ERR(spi_clk);
+		goto err_probe_clk_get;
+	}
+
+	rc = clk_enable(spi_clk);
+	if (rc) {
+		dev_err(&pdev->dev, "%s: unable to enable spi_clk\n",
+		        __func__);
+		goto err_probe_clk_enable;
+	}
 
 	clk_set_rate(spi_clk, 4800000);
 	printk(KERN_DEBUG "spi clk = 0x%ld\n", clk_get_rate(spi_clk));
@@ -125,11 +148,14 @@ static int __init msm_spi_probe(struct platform_device *pdev)
 	printk("spi: SPI_ERROR_FLAGS=%x\n", readl(spi_base+SPI_ERROR_FLAGS));
 	printk("-%s()\n", __FUNCTION__);
 
-	return 0 ;
+	clk_disable(spi_clk);
 
-err_probe_clk_get:
+	return 0;
+
 err_probe_clk_enable:
-	return -1 ;
+err_probe_clk_get:
+	iounmap(spi_base);
+	return -1;
 }
 
 static int __devexit msm_spi_remove(struct platform_device *pdev)
@@ -140,26 +166,26 @@ static int __devexit msm_spi_remove(struct platform_device *pdev)
 static int msm_spi_suspend(struct platform_device *pdev, pm_message_t state)
 {
 	printk("+%s()\n", __FUNCTION__);
-	clk_disable(spi_clk);
-	return 0 ;
+//	clk_disable(spi_clk);
+	return 0;
 }
 
 static int msm_spi_resume(struct platform_device *pdev)
 {
-	printk("+%s()\n", __FUNCTION__);
-	clk_enable(spi_clk);
-	return 0 ;
+	printk(KERN_DEBUG "%s\n", __func__);
+//	clk_enable(spi_clk);
+	return 0;
 }
 
 static struct platform_driver msm_spi_driver = {
-	.probe          = msm_spi_probe,
-	.driver		= {
+	.probe	= msm_spi_probe,
+	.driver	= {
 		.name	= "spi_qsd",
 		.owner	= THIS_MODULE,
 	},
-	.suspend        = msm_spi_suspend,
-	.resume         = msm_spi_resume,
-	.remove		= __exit_p(msm_spi_remove),
+//	.suspend	= msm_spi_suspend,
+//	.resume	= msm_spi_resume,
+	.remove	= __exit_p(msm_spi_remove),
 };
 
 static int __init msm_spi_init(void)

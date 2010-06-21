@@ -564,27 +564,35 @@ supersonic_mddi_init(struct msm_mddi_bridge_platform_data *bridge_data,
 
 	if (panel_type == 0) {
 		/* Epson panel */
+
 		for (i = 0; i < ARRAY_SIZE(epson_init_seq); i++) {
 			reg = cpu_to_le32(epson_init_seq[i].reg);
 			val = cpu_to_le32(epson_init_seq[i].val);
-			if (reg == REG_WAIT)
+			if (reg == REG_WAIT) {
 				mdelay(val);
-			else
+			} else {
 				client_data->remote_write(client_data, val, reg);
+			}
 		}
+
+		client_data->auto_hibernate(client_data, 1);
+
+/*
 		for (i = 0; i < ARRAY_SIZE(epson_init_cmds); i++) {
 			reg = epson_init_cmds[i].reg;
 			val = epson_init_cmds[i].val;
 			delay = epson_init_cmds[i].delay;
-			if (qspi_send_9bit(reg, val)) {
+			if (qspi_send_9bit(reg, val) < 0) {
 				printk(KERN_ERR "%s: spi_write fail (%02x, %02x)!\n", __func__, reg, val);
-			}
-			else if (delay) {
-				mdelay(delay);
+			} else if (delay > 0) {
+				msleep(delay);
 			}
 		}
+*/
+
 	} else {
 		/* Novatec panel (panel_type == 1) */
+
 		for (i = 0; i < ARRAY_SIZE(nov_init_seq); i++) {
 			reg = cpu_to_le32(nov_init_seq[i].reg);
 			val = cpu_to_le32(nov_init_seq[i].val);
@@ -593,9 +601,9 @@ supersonic_mddi_init(struct msm_mddi_bridge_platform_data *bridge_data,
 			else
 				client_data->remote_write(client_data, val, reg);
 		}
-	}
 
-	client_data->auto_hibernate(client_data, 1);
+		client_data->auto_hibernate(client_data, 1);
+	}
 	return 0;
 }
 
