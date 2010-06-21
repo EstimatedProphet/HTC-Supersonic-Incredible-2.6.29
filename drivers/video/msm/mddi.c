@@ -870,8 +870,10 @@ static int __init mddi_probe(struct platform_device *pdev)
 
 	mddi_set_auto_hibernate(&mddi->client_data, 1);
 
-	if (mddi->caps.Mfr_Name == 0 || mddi->caps.Product_Code == 0)
-		pdata->fixup(&mddi->caps.Mfr_Name, &mddi->caps.Product_Code);
+	if (mddi->caps.Mfr_Name == 0) {
+		if (pdata->fixup)
+			pdata->fixup(&mddi->caps.Mfr_Name, &mddi->caps.Product_Code);
+	}
 
 	mddi->client_pdev.id = 0;
 	for (i = 0; i < pdata->num_clients; i++) {

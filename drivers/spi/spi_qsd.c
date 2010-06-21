@@ -102,38 +102,31 @@ int qspi_send(unsigned char id, unsigned data)
 
 static int __init msm_spi_probe(struct platform_device *pdev)
 {
-	int rc, num_resources;
-	struct resource *res;
-	num_resources = pdev->num_resources;
+	int ret = 0;
+	struct resource *resource;
 
-	if (num_resources < 1) {
-		printk(KERN_ERR "%s: Couldn't get msm_spi resources\n", __func__);
-		return -ENODEV;
-	}
-
-	res = pdev->resource;
-	for (num_resources--; num_resources >= 0; num_resources--) {
-		if (res[num_resources].flags == IORESOURCE_MEM) {
-			spi_base = ioremap(res[num_resources].start, 
-				res[num_resources].end - res[num_resources].start + 1);
-			break;
-		}
-	}
-
-	if(!spi_base) {
-		printk(KERN_ERR "%s: Unable to remap spi memory resource.\n", __func__);
+	resource = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	if (!resource) {
+		printk(KERN_ERR "%s: no associated mem resource!\n", __func__);
 		return -ENOMEM;
+	}
+
+	spi_base = ioremap(resource->start,
+			resource->end - resource->start + 1);
+	if (!spi_base) {
+		ret = -EINVAL;
+		goto err_ioremap;
 	}
 
 	spi_clk = clk_get(&pdev->dev, "spi_clk");
 	if (IS_ERR(spi_clk)) {
 		dev_err(&pdev->dev, "%s: unable to get spi_clk\n", __func__);
-		rc = PTR_ERR(spi_clk);
+		ret = PTR_ERR(spi_clk);
 		goto err_probe_clk_get;
 	}
 
-	rc = clk_enable(spi_clk);
-	if (rc) {
+	ret = clk_enable(spi_clk);
+	if (ret) {
 		dev_err(&pdev->dev, "%s: unable to enable spi_clk\n",
 		        __func__);
 		goto err_probe_clk_enable;
@@ -150,12 +143,13 @@ static int __init msm_spi_probe(struct platform_device *pdev)
 
 	clk_disable(spi_clk);
 
-	return 0;
+	return ret;
 
 err_probe_clk_enable:
 err_probe_clk_get:
 	iounmap(spi_base);
-	return -1;
+err_ioremap:
+	return ret;
 }
 
 static int __devexit msm_spi_remove(struct platform_device *pdev)
