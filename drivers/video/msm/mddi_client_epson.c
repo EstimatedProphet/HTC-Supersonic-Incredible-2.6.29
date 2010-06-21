@@ -14,8 +14,10 @@
 #include <linux/module.h>
 #include <linux/kernel.h>
 #include <linux/platform_device.h>
+#include <linux/delay.h>
 #include <linux/interrupt.h>
 #include <linux/gpio.h>
+#include <linux/wakelock.h>
 #include <mach/msm_fb.h>
 
 static DECLARE_WAIT_QUEUE_HEAD(epson_vsync_wait);
@@ -25,10 +27,14 @@ struct panel_info {
 	struct platform_device pdev;
 	struct msm_panel_data panel_data;
 	struct msmfb_callback *epson_callback;
+	struct wake_lock idle_lock;
 	int epson_got_int;
 };
 
-static irqreturn_t epson_vsync_interrupt(int irq, void *data);
+static struct platform_device mddi_eps_cabc = {
+	.name = "eps_cabc",
+	.id = 0,
+};
 
 static void epson_request_vsync(struct msm_panel_data *panel_data,
 				  struct msmfb_callback *callback)
@@ -80,7 +86,9 @@ static int epson_suspend(struct msm_panel_data *panel_data)
 		client_data->private_client_data;
 	int ret;
 
+	wake_lock(&panel->idle_lock);
 	ret = bridge_data->uninit(bridge_data, client_data);
+	wake_unlock(&panel->idle_lock);
 	if (ret) {
 		printk(KERN_INFO "mddi epson client: non zero return from "
 			"uninit\n");
@@ -100,7 +108,9 @@ static int epson_resume(struct msm_panel_data *panel_data)
 		client_data->private_client_data;
 	int ret;
 
+	wake_lock(&panel->idle_lock);
 	client_data->resume(client_data);
+	wake_unlock(&panel->idle_lock);
 	ret = bridge_data->init(bridge_data, client_data);
 	if (ret)
 		return ret;
@@ -189,6 +199,7 @@ static int mddi_epson_probe(struct platform_device *pdev)
 	struct msm_mddi_client_data *client_data = pdev->dev.platform_data;
 	struct msm_mddi_bridge_platform_data *bridge_data =
 		client_data->private_client_data;
+	struct panel_data *panel_data = &bridge_data->panel_conf;
 	struct panel_info *panel =
 		kzalloc(sizeof(struct panel_info), GFP_KERNEL);
 	if (!panel)
@@ -196,6 +207,12 @@ static int mddi_epson_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, panel);
 
 	printk(KERN_DEBUG "%s\n", __func__);
+
+	if (panel_data->caps & MSMFB_CAP_CABC) {
+		printk(KERN_INFO "CABC enabled\n");
+		mddi_eps_cabc.dev.platform_data = client_data;
+		platform_device_register(&mddi_eps_cabc);
+	}
 
 	ret = setup_vsync(panel, 1);
 	if (ret) {
@@ -220,6 +237,7 @@ static int mddi_epson_probe(struct platform_device *pdev)
 	panel->pdev.num_resources = 1;
 	panel->pdev.dev.platform_data = &panel->panel_data;
 	platform_device_register(&panel->pdev);
+	wake_lock_init(&panel->idle_lock, WAKE_LOCK_IDLE, "eps_idle_lock");
 
 	return 0;
 }
@@ -233,7 +251,7 @@ static int mddi_epson_remove(struct platform_device *pdev)
 	return 0;
 }
 
-static struct platform_driver mddi_client_d263_0000 = {
+static struct platform_driver mddi_client_4ca3_0000 = {
 	.probe = mddi_epson_probe,
 	.remove = mddi_epson_remove,
 	.driver = { .name = "mddi_c_4ca3_0000" },
@@ -241,7 +259,7 @@ static struct platform_driver mddi_client_d263_0000 = {
 
 static int __init mddi_client_epson_init(void)
 {
-	platform_driver_register(&mddi_client_d263_0000);
+	platform_driver_register(&mddi_client_4ca3_0000);
 	return 0;
 }
 

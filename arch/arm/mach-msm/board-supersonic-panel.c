@@ -108,7 +108,7 @@ static void suc_set_brightness(struct led_classdev *led_cdev,
 	struct msm_mddi_client_data *client = cabc.client_data;
 	unsigned int shrink_br = val;
 
-	printk(KERN_DEBUG "set brightness = %d\n", val);
+	printk(KERN_DEBUG "%s: %d\n", __func__, val);
 	if (test_bit(GATE_ON, &cabc.status) == 0)
 		return;
 
@@ -149,6 +149,9 @@ static enum led_brightness
 suc_get_brightness(struct led_classdev *led_cdev)
 {
 	struct msm_mddi_client_data *client = cabc.client_data;
+
+	printk(KERN_DEBUG "%s\n", __func__);
+
 	if (panel_type == 0) {
 		return client->remote_read(client, 0x14b4);
 	} else {
@@ -160,6 +163,8 @@ suc_get_brightness(struct led_classdev *led_cdev)
 static void suc_backlight_switch(int on)
 {
 	enum led_brightness val;
+
+	printk(KERN_DEBUG "%s: %d\n", __func__, on);
 
 	if (on) {
 		printk(KERN_DEBUG "turn on backlight\n");
@@ -181,6 +186,8 @@ static void suc_backlight_switch(int on)
 static int suc_backlight_probe(struct platform_device *pdev)
 {
 	int err = -EIO;
+
+	printk(KERN_DEBUG "%s\n", __func__);
 
 	mutex_init(&cabc.lock);
 	cabc.client_data = pdev->dev.platform_data;
@@ -559,6 +566,10 @@ supersonic_mddi_init(struct msm_mddi_bridge_platform_data *bridge_data,
 {
 	int i;
 	unsigned reg, val, delay;
+	int sz = ARRAY_SIZE(epson_init_cmds);
+	struct lcm_cmd init_cmds[sz];
+
+	printk(KERN_DEBUG "%s: paneltype = %d\n", __func__, panel_type);
 
 	client_data->auto_hibernate(client_data, 0);
 
@@ -577,18 +588,17 @@ supersonic_mddi_init(struct msm_mddi_bridge_platform_data *bridge_data,
 
 		client_data->auto_hibernate(client_data, 1);
 
-/*
-		for (i = 0; i < ARRAY_SIZE(epson_init_cmds); i++) {
-			reg = epson_init_cmds[i].reg;
-			val = epson_init_cmds[i].val;
-			delay = epson_init_cmds[i].delay;
+		memcpy(init_cmds, epson_init_cmds, sizeof(struct lcm_cmd) * sz);
+		for (i = 0; i < sz; i++) {
+			reg = init_cmds[i].reg;
+			val = init_cmds[i].val;
+			delay = init_cmds[i].delay;
 			if (qspi_send_9bit(reg, val) < 0) {
 				printk(KERN_ERR "%s: spi_write fail (%02x, %02x)!\n", __func__, reg, val);
 			} else if (delay > 0) {
 				msleep(delay);
 			}
 		}
-*/
 
 	} else {
 		/* Novatec panel (panel_type == 1) */
@@ -614,13 +624,16 @@ supersonic_mddi_uninit(struct msm_mddi_bridge_platform_data *bridge_data,
 	int i;
 	unsigned char reg, val;
 	unsigned delay;
+
+	printk(KERN_DEBUG "%s\n", __func__);
+
 	if (panel_type == 0) {
 		// Epson
 		for (i = 0; i < ARRAY_SIZE(epson_uninit_cmds); i++) {
 			reg = epson_uninit_cmds[i].reg;
 			val = epson_uninit_cmds[i].val;
 			delay = epson_uninit_cmds[i].delay;
-			if (qspi_send_9bit(reg, val)) {
+			if (qspi_send_9bit(reg, val) < 0) {
 				printk(KERN_ERR "%s: spi_write fail (%02x, %02x)!\n", __func__, reg, val);
 			}
 			else if (delay) {
@@ -641,6 +654,8 @@ static int backlight_control(int on)
 	struct i2c_msg msg;
 	u8 buf[] = {0x90, 0x00, 0x00, 0x08};
 	int ret = -EIO, max_retry = 3;
+
+	printk(KERN_DEBUG "%s: %d\n", __func__, on);
 
 	msg.addr = 0xcc >> 1;
 	msg.flags = 0;
@@ -670,7 +685,7 @@ static int
 supersonic_panel_blank(struct msm_mddi_bridge_platform_data *bridge_data,
 			struct msm_mddi_client_data *client_data)
 {
-	B(KERN_DEBUG "%s\n", __func__);
+	printk(KERN_DEBUG "%s\n", __func__);
 	suc_backlight_switch(LED_OFF);
 	backlight_control(0);
 	return 0;
@@ -680,7 +695,7 @@ static int
 supersonic_panel_unblank(struct msm_mddi_bridge_platform_data *bridge_data,
 			struct msm_mddi_client_data *client_data)
 {
-	B(KERN_DEBUG "%s\n", __func__);
+	printk(KERN_DEBUG "%s\n", __func__);
 	if (panel_type == 1) {
 		// nov
 		suc_backlight_switch(LED_FULL);
@@ -737,6 +752,7 @@ mddi_novatec_power(struct msm_mddi_client_data *client_data, int on)
 {
 	unsigned id, on_off = 1;
 
+	printk(KERN_DEBUG "%s: on=%d\n", __func__, on);
 	B(KERN_DEBUG "%s: power %s.\n", __func__, on ? "on" : "off");
 
 	if (on) {
@@ -779,6 +795,9 @@ static void
 mddi_epson_power(struct msm_mddi_client_data *client_data, int on)
 {
 	unsigned id, on_off = 1;
+
+	printk(KERN_DEBUG "%s: on=%d\n", __func__, on);
+
 	if (on) {
 		on_off = 1;
 		gpio_set_value(SUPERSONIC_LCD_RST_XD, 1);

@@ -983,7 +983,7 @@ static struct tpa6130_platform_data headset_amp_platform_data = {
 
 static struct i2c_board_info i2c_devices[] = {
 	{
-		I2C_BOARD_INFO(ATMEL_QT602240_NAME, 0xcc >> 1), //0x94 >> 1),
+		I2C_BOARD_INFO(ATMEL_QT602240_NAME, 0x94 >> 1),
 		.platform_data = &supersonic_atmel_ts_data,
 		.irq = MSM_GPIO_TO_INT(SUPERSONIC_GPIO_TP_INT_N)
 	},

@@ -86,6 +86,8 @@ static int novtec_suspend(struct msm_panel_data *panel_data)
 		client_data->private_client_data;
 	int ret;
 
+	printk(KERN_DEBUG "%s\n", __func__);
+
 	wake_lock(&panel->idle_lock);
 	ret = bridge_data->uninit(bridge_data, client_data);
 	wake_unlock(&panel->idle_lock);
@@ -108,6 +110,8 @@ static int novtec_resume(struct msm_panel_data *panel_data)
 		client_data->private_client_data;
 	int ret;
 
+	printk(KERN_DEBUG "%s\n", __func__);
+
 	wake_lock(&panel->idle_lock);
 	client_data->resume(client_data);
 	wake_unlock(&panel->idle_lock);
@@ -125,6 +129,8 @@ static int novtec_blank(struct msm_panel_data *panel_data)
 	struct msm_mddi_bridge_platform_data *bridge_data =
 		client_data->private_client_data;
 
+	printk(KERN_DEBUG "%s\n", __func__);
+
 	return bridge_data->blank(bridge_data, client_data);
 }
 
@@ -135,6 +141,8 @@ static int novtec_unblank(struct msm_panel_data *panel_data)
 	struct msm_mddi_client_data *client_data = panel->client_data;
 	struct msm_mddi_bridge_platform_data *bridge_data =
 		client_data->private_client_data;
+
+	printk(KERN_DEBUG "%s\n", __func__);
 
 	return bridge_data->unblank(bridge_data, client_data);
 }
@@ -159,6 +167,8 @@ static int setup_vsync(struct panel_info *panel,
 	int ret;
 	int gpio = 98;
 	unsigned int irq;
+
+	printk(KERN_DEBUG "%s: init=%d\n", __func__, init);
 
 	if (!init) {
 		ret = 0;
@@ -204,11 +214,11 @@ static int mddi_novtec_probe(struct platform_device *pdev)
 	struct panel_info *panel =
 		kzalloc(sizeof(struct panel_info), GFP_KERNEL);
 
+	printk(KERN_DEBUG "%s\n", __func__);
+
 	if (!panel)
 		return -ENOMEM;
 	platform_set_drvdata(pdev, panel);
-
-	printk(KERN_DEBUG "%s\n", __func__);
 
 	if (panel_data->caps & MSMFB_CAP_CABC) {
 		printk(KERN_INFO "CABC enabled\n");
@@ -248,6 +258,8 @@ static int mddi_novtec_remove(struct platform_device *pdev)
 {
 	struct panel_info *panel = platform_get_drvdata(pdev);
 
+	printk(KERN_DEBUG "%s\n", __func__);
+
 	setup_vsync(panel, 0);
 	kfree(panel);
 	return 0;
@@ -261,6 +273,7 @@ static struct platform_driver mddi_client_d263_0000 = {
 
 static int __init mddi_client_novtec_init(void)
 {
+	printk(KERN_DEBUG "%s\n", __func__);
 	platform_driver_register(&mddi_client_d263_0000);
 	return 0;
 }
