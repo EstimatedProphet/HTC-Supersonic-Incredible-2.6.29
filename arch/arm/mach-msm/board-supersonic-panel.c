@@ -881,6 +881,7 @@ static struct platform_driver suc_backlight_driver = {
 };
 
 static struct msm_mdp_platform_data mdp_pdata = {
+	.dma_channel = MDP_DMA_P;
 };
 
 int __init supersonic_init_panel(void)
@@ -900,11 +901,7 @@ int __init supersonic_init_panel(void)
 	if (IS_ERR(vreg_lcd_2v8))
 		return PTR_ERR(vreg_lcd_2v8);
 
-	if (panel_type == 0) {
-		mdp_pdata.dma_channel = MDP_DMA_S;
-	} else {
-		mdp_pdata.dma_channel = MDP_DMA_P;
-	}
+	// TODO: something is based on panel_type here -maejrep
 
 	msm_device_mdp.dev.platform_data = &mdp_pdata;
 	rc = platform_device_register(&msm_device_mdp);
