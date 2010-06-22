@@ -881,7 +881,7 @@ static struct platform_driver suc_backlight_driver = {
 };
 
 static struct msm_mdp_platform_data mdp_pdata = {
-	.dma_channel = MDP_DMA_P;
+	.dma_channel = MDP_DMA_P,
 };
 
 int __init supersonic_init_panel(void)
