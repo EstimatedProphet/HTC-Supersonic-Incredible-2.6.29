@@ -1036,15 +1036,16 @@ static int __init microp_common_init(void)
 	int ret;
 	int n, MICROP_IRQ_END = FIRST_MICROP_IRQ + NR_MICROP_IRQS;
 
-	ret = i2c_add_driver(&microp_i2c_driver);
-	if (ret)
-		return ret;
-
 	for (n = FIRST_MICROP_IRQ; n < MICROP_IRQ_END; n++) {
 		set_irq_chip(n, &microp_irq_chip);
 		set_irq_handler(n, handle_level_irq);
 		set_irq_flags(n, IRQF_VALID);
 	}
+
+	ret = i2c_add_driver(&microp_i2c_driver);
+	if (ret)
+		return ret;
+
 	return 0;
 }
 
